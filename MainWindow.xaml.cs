@@ -40,6 +40,9 @@ namespace WPFDemoServer
         private const Int32 KINECT_HEIGHT = 480;
         private const Int16 cmdQueueLength = 10;
         private const Int16 frameDistQueueLength = 10;
+        private const Int16 cGazePosQueueLength = 10;
+        private const double cGazeCheckIntlMilliSec = 50;
+        private const double cGazeActivityThresh = 1000;
 
         //--system settings---------------------
         public Boolean bGlobalSettingFramed;
@@ -63,6 +66,7 @@ namespace WPFDemoServer
         private ConcurrentQueue<Boolean> lmbQueue;
         private ConcurrentQueue<String> cmdQueue;
         private ConcurrentQueue<Double> frameDistQueue;
+        private ConcurrentQueue<Point> qGazePosQueue;
 
         //--system status-----------------------
         private System.Windows.Point realMouseRelativePos;
@@ -89,6 +93,9 @@ namespace WPFDemoServer
         private Int16 nTickCount;
         private Double dFramePerSec;
 
+        private Boolean bGazeDwelling;
+        private Double dGazeActivity;
+
         //--misc components---------------------
         //---time---------------
         private System.Diagnostics.Stopwatch stopwatch;
@@ -97,6 +104,7 @@ namespace WPFDemoServer
         private System.Diagnostics.Stopwatch fpsStopwatch;
         private System.Diagnostics.Stopwatch frameAppearStopwatch;
         private DispatcherTimer timer;
+        private DispatcherTimer gazeTimer;
         private System.Timers.Timer movementTimer;
         //---file---------------
         public StreamWriter fileWriter;
@@ -107,7 +115,7 @@ namespace WPFDemoServer
         private Window1 dlgWindow;
 
 
-        
+
         /// <summary>
         /// window load event
         /// </summary>
@@ -143,12 +151,16 @@ namespace WPFDemoServer
             bMouseFirstMove = true;
             bShowFrame = false;
             bMovingMouse = false;
+            bCursorOnFrame = false;
+            bGazeDwelling = true;
+            dGazeActivity = 0.0f;
+
             bFirstEnter = true;
             bFirstTarget = true;
-            bCursorOnFrame = false;
             miss_count = 0;
             move_count = 1;
             task_count = 12;
+
             nLastTimeStamp = 0;
             nTickCount = 0;
             dFramePerSec = 0;
@@ -159,6 +171,7 @@ namespace WPFDemoServer
             lmbQueue = new ConcurrentQueue<Boolean>();
             cmdQueue = new ConcurrentQueue<String>();
             frameDistQueue = new ConcurrentQueue<Double>();
+            qGazePosQueue = new ConcurrentQueue<Point>();
 
             stopwatch = new System.Diagnostics.Stopwatch();
             dwellStopwatch = new System.Diagnostics.Stopwatch();
@@ -169,6 +182,10 @@ namespace WPFDemoServer
             timer = new DispatcherTimer(DispatcherPriority.Background);
             timer.Interval = TimeSpan.FromTicks(10);
             timer.Tick += new EventHandler(timer_Tick);
+
+            gazeTimer = new DispatcherTimer(DispatcherPriority.Background);
+            gazeTimer.Interval = TimeSpan.FromMilliseconds(cGazeCheckIntlMilliSec);
+            gazeTimer.Tick += new EventHandler(gazeTimer_Tick);
 
             movementTimer = new System.Timers.Timer();
             movementTimer.Interval = 100;
@@ -196,10 +213,64 @@ namespace WPFDemoServer
             Thread udpThread = new Thread(new ThreadStart(udpLoop));
             udpThread.Start();
             timer.Start();
+            gazeTimer.Start();
             dlgWindow.Show();
             fpsStopwatch.Start();
 
         }//Window_Loaded
+
+        private void gazeTimer_Tick(object sender, EventArgs e)
+        {
+            //Gaze point queue
+            qGazePosQueue.Enqueue(
+                new Point(
+                    ellipseLaserPoint.Margin.Left + ellipseLaserPoint.ActualWidth / 2,
+                    ellipseLaserPoint.Margin.Left + ellipseLaserPoint.ActualHeight / 2
+                )
+            );
+
+            if (qGazePosQueue.Count > cGazePosQueueLength)
+            {
+                Point trashPoint = new Point();
+                while (qGazePosQueue.Count > cGazePosQueueLength)
+                {
+                    qGazePosQueue.TryDequeue(out trashPoint);
+                }
+
+                int id;
+                double xAverage = 0.0f, yAverage = 0.0f, avgSqrtDelta = 0.0f;
+                for (id = 0; id < cGazePosQueueLength; ++id)
+                {
+                    xAverage += qGazePosQueue.ElementAt(id).X;
+                    yAverage += qGazePosQueue.ElementAt(id).Y;
+                }
+                xAverage /= cGazePosQueueLength;
+                yAverage /= cGazePosQueueLength;
+
+                for (id = 0; id < cGazePosQueueLength; ++id)
+                {
+                    avgSqrtDelta += System.Math.Pow(qGazePosQueue.ElementAt(id).X - xAverage, 2) + System.Math.Pow(qGazePosQueue.ElementAt(id).Y - yAverage, 2);
+                }
+                avgSqrtDelta /= cGazePosQueueLength;
+                dGazeActivity = avgSqrtDelta;
+                label5.Content = "avgSqrtDelta(gaze activity): " + avgSqrtDelta.ToString("00.00");
+
+                if(dGazeActivity > cGazeActivityThresh)
+                {
+                    if(bGazeDwelling)
+                    {
+                        bGazeDwelling = false;
+                    }
+                }
+                else
+                {
+                    if(!bGazeDwelling)
+                    {
+                        bGazeDwelling = true;
+                    }
+                }
+            }
+        }
 
 
         /// <summary>
@@ -346,8 +417,9 @@ namespace WPFDemoServer
 
             nTickCount++;
 
-            if (nTickCount % 50 == 0)
+            if (nTickCount % 20 == 0) //less frequently refreshed contents
             {
+                //UI: command list, OSD
                 String[] commands = new String[cmdQueueLength];
                 if(cmdQueue.Count > 0){
                     commands = cmdQueue.ToArray();
@@ -370,12 +442,12 @@ namespace WPFDemoServer
                 }
             }
 
-            if (nTickCount >= 2000)
+            if (nTickCount >= 100)
             {
-                nTickCount = 0;
                 long nNow = fpsStopwatch.ElapsedMilliseconds;
-                dFramePerSec = 2000000.0 / (nNow - nLastTimeStamp);
-                if (nNow != nLastTimeStamp) label2.Content = Convert.ToString(Convert.ToInt32(dFramePerSec)) + "ticks/sec";
+                dFramePerSec = nTickCount * 1000 / (nNow - nLastTimeStamp);
+                if (nNow != nLastTimeStamp) label2.Content = Convert.ToString(Convert.ToInt32(dFramePerSec)) + " ticks/sec";
+                nTickCount = 0;
                 nLastTimeStamp = nNow;
             }
         }//timer_Tick
