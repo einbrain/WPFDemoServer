@@ -1,0 +1,25 @@
+﻿<Window x:Class="WPFDemoServer.Window1"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Save file dialog" Height="408" Width="545" WindowStyle="ToolWindow" Loaded="Window_Loaded" Closed="Window_Closed" xmlns:chartingToolkit="clr-namespace:System.Windows.Controls.DataVisualization.Charting;assembly=System.Windows.Controls.DataVisualization.Toolkit">
+    <Grid>
+        <TextBox Height="23" Margin="12,34,0,0" Name="textBox1" VerticalAlignment="Top" IsEnabled="False" HorizontalAlignment="Left" Width="258" />
+        <Label Content="Record file path:" Height="28" HorizontalAlignment="Left" Name="label1" VerticalAlignment="Top" />
+        <Button Content="..." Height="23" Margin="276,34,0,0" Name="button1" VerticalAlignment="Top" HorizontalAlignment="Left" Width="26" Click="button1_Click" />
+        <Button Content="Start Test" Margin="11,294,0,12" Name="button2" Click="button2_Click" HorizontalAlignment="Left" Width="291" />
+        <Slider Height="23" HorizontalAlignment="Left" Margin="12,90,0,0" Name="slider1" VerticalAlignment="Top" Width="290" Minimum="0.5" Maximum="8" ValueChanged="slider1_ValueChanged" Value="1" IsSnapToTickEnabled="True" TickFrequency="0.5" TickPlacement="BottomRight" />
+        <Label Content="Mouse Scaling" Height="28" HorizontalAlignment="Left" Margin="112,119,0,0" Name="label2" VerticalAlignment="Top" />
+        <Slider Height="23" HorizontalAlignment="Left" Margin="13,153,0,0" Maximum="7" Minimum="1" Name="slider2" Value="2" VerticalAlignment="Top" Width="290" ValueChanged="slider2_ValueChanged" TickPlacement="BottomRight" IsSnapToTickEnabled="True" LargeChange="0.5" TickFrequency="0.5" />
+        <Label Content="Frame Scaling" Height="28" HorizontalAlignment="Left" Margin="112,182,0,0" Name="label3" VerticalAlignment="Top" />
+        <TextBox Text="20"  Height="21" Margin="69,63,0,0" Name="repeatBox" VerticalAlignment="Top" HorizontalAlignment="Left" Width="56" />
+        <Label Content="Repeat" Height="28" HorizontalAlignment="Left" Margin="13,61,0,0" Name="label4" VerticalAlignment="Top" />
+        <Label Content="time(s)" Height="28" HorizontalAlignment="Left" Margin="131,61,0,0" Name="label5" VerticalAlignment="Top" />
+        <TextBlock Margin="331,19,0,12" Name="textBlock1" Text="TextBlock" />
+        <Slider Height="23" HorizontalAlignment="Left" Margin="13,216,0,0" Maximum="2" Minimum="1" Name="slider3" TickPlacement="BottomRight" Value="1.5" VerticalAlignment="Top" Width="290" LargeChange="0.1" SmallChange="0.01" TickFrequency="0.1" IsSnapToTickEnabled="True" ValueChanged="slider3_ValueChanged" />
+        <Label Content="Shrinking index" Height="28" HorizontalAlignment="Left" Margin="112,245,0,0" Name="label6" VerticalAlignment="Top" />
+        <CheckBox Content="Shrink" Height="16" HorizontalAlignment="Left" Margin="75,272,0,0" Name="checkBox1" VerticalAlignment="Top" IsChecked="True" Checked="checkBox1_Checked" Unchecked="checkBox1_Unchecked" />
+        <CheckBox Content="Mouse Controlling" Height="16" HorizontalAlignment="Left" IsChecked="False" Margin="137,272,0,0" Name="checkBox2" VerticalAlignment="Top" Checked="checkBox2_Checked" Unchecked="checkBox2_Unchecked" />
+        <CheckBox Content="Line" Height="16" HorizontalAlignment="Right" IsChecked="False" Margin="0,272,226,0" Name="checkBox3" VerticalAlignment="Top" Checked="checkBox3_Checked" Unchecked="checkBox3_Unchecked" />
+        <CheckBox Content="Frame" Height="16" HorizontalAlignment="Left" Margin="13,272,0,0" x:Name="checkBox4" VerticalAlignment="Top" IsChecked="True" Checked="checkBox4_Checked" Unchecked="checkBox4_Unchecked" />
+    </Grid>
+</Window>

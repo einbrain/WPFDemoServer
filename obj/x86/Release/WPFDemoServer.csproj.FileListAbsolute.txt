@@ -1,0 +1,16 @@
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\ResolveAssemblyReference.cache
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\MainWindow.baml
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\Window1.baml
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\MainWindow.g.cs
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\Window1.g.cs
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\App.g.cs
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\WPFDemoServer_MarkupCompile.cache
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\WPFDemoServer.g.resources
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\WPFDemoServer.Properties.Resources.resources
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\GenerateResource.read.1.tlog
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\GenerateResource.write.1.tlog
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\bin\Release\WPFDemoServer.exe.config
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\bin\Release\WPFDemoServer.exe
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\bin\Release\WPFDemoServer.pdb
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\WPFDemoServer.exe
+C:\Users\iplab\Desktop\WPFDemoServer 111027\WPFDemoServer 111027\WPFDemoServer\obj\x86\Release\WPFDemoServer.pdb
