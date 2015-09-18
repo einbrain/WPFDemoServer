@@ -9,15 +9,15 @@
         <Canvas Name="canvas1" Panel.ZIndex="-2" Background="Black" MouseMove="canvas1_MouseMove">
             <Ellipse Height="30" Name="ellipseTarget" Stroke="#00000000" Width="30" Fill="#FFF8B02D" Visibility="Hidden" Canvas.Left="0" Canvas.Top="0" />
             <Rectangle Height="38" Name="rectangle1" Width="37" Visibility="Hidden" StrokeThickness="0" Stroke="#986FD3FF" Canvas.Left="0" Canvas.Top="0" Fill="#488AEFB8"></Rectangle>
-            <Ellipse Height="15" Name="ellipse1" Stroke="#6500C200" Width="15" Fill="#FF1EC4AA" Panel.ZIndex="1" Canvas.Left="0" Canvas.Top="0" />
+            <Ellipse Height="15" Name="ellipse1" Stroke="#6500C200" Width="15" Fill="#FFFFFFFF" Panel.ZIndex="1" Canvas.Left="0" Canvas.Top="0" />
             <Label Canvas.Left="0" Canvas.Top="-2" Content="Time" Height="48" Name="label1" FontSize="24" Width="340" Foreground="#8EBBB7B7" Panel.ZIndex="-1" />
             <Line Name="line1"  StrokeThickness="3" Stroke="#986FD3FF" Visibility="Hidden" />
-            <Label Canvas.Right="6" Canvas.Top="6" Content="FPS" FontSize="16" Foreground="#9ABBB7B7" Height="32" Name="label2" Panel.ZIndex="-1" Width="196" FlowDirection="RightToLeft"/>
+            <Label Canvas.Right="6" Canvas.Top="6" Content="FPS" FontSize="16" Foreground="#9ABBB7B7" Height="32" Name="label2" Panel.ZIndex="-1" Width="196" FlowDirection="RightToLeft" HorizontalAlignment="Left"/>
             <Label Canvas.Left="0" Canvas.Top="44" Content="Left task(s)" FontSize="24" Height="48" Name="label3" Panel.ZIndex="-1" Width="340" Opacity="1" Foreground="#97E2E2E2"></Label>
             <Label Canvas.Left="0" Canvas.Top="98" Content="Test stopped." FontSize="24" Foreground="#97D6D1D1" Height="48" Name="label4" Opacity="1" Panel.ZIndex="-1" Width="482" />
             <Ellipse Canvas.Left="0" Canvas.Top="0" Height="25" Name="ellipseMouseRing" Stroke="#FFE01000" Width="25" StrokeMiterLimit="10" StrokeThickness="3" Visibility="Hidden" />
             <Ellipse Height="15" x:Name="ellipseLaserPoint" Stroke="#ffffffff" Width="15" Fill="#FF581BA2" Panel.ZIndex="1" Canvas.Top="0" />
-            <Label Canvas.Right="6" Canvas.Top="44" Content="Gaze Status" FontSize="16" Foreground="#9ABBB7B7" Height="32" x:Name="label5" Panel.ZIndex="-1" Width="395" FlowDirection="RightToLeft"/>
+            <Label Canvas.Right="6" Canvas.Top="43" Content="Gaze Status" FontSize="16" Foreground="#9ABBB7B7" Height="32" x:Name="label5" Panel.ZIndex="-1" Width="395" FlowDirection="RightToLeft" HorizontalAlignment="Left"/>
         </Canvas>
     </Grid>
 </Window>

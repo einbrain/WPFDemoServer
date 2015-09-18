@@ -42,7 +42,7 @@ namespace WPFDemoServer
         private const Int16 frameDistQueueLength = 10;
         private const Int16 cGazePosQueueLength = 10;
         private const double cGazeCheckIntlMilliSec = 50;
-        private const double cGazeActivityThresh = 1000;
+        private const double cGazeActivityThresh = 225;
 
         //--system settings---------------------
         public Boolean bGlobalSettingFramed;
@@ -260,6 +260,8 @@ namespace WPFDemoServer
                     if(bGazeDwelling)
                     {
                         bGazeDwelling = false;
+                        ellipseLaserPoint.Fill = new SolidColorBrush(Color.FromArgb(0xff, 0xfa, 0xf3, 0x1e));
+                        rectangle1.Fill = new SolidColorBrush(Color.FromArgb(0x48, 0x8a, 0xef, 0xb8));
                     }
                 }
                 else
@@ -267,6 +269,8 @@ namespace WPFDemoServer
                     if(!bGazeDwelling)
                     {
                         bGazeDwelling = true;
+                        ellipseLaserPoint.Fill = new SolidColorBrush(Color.FromArgb(0xff, 0x58, 0x1b, 0xa2));
+                        rectangle1.Fill = new SolidColorBrush(Color.FromArgb(0x48, 0x1e, 0xad, 0xfa));
                     }
                 }
             }
