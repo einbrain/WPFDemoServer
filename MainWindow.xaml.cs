@@ -40,9 +40,12 @@ namespace WPFDemoServer
         private const Int32 KINECT_HEIGHT = 480;
         private const Int16 cmdQueueLength = 10;
         private const Int16 frameDistQueueLength = 10;
+        private const Int16 cFrameRemainTimeMS = 400;
         private const Int16 cGazePosQueueLength = 10;
         private const double cGazeCheckIntlMilliSec = 50;
         private const double cGazeActivityThresh = 225;
+        private const int cGazeDwellSampleCount = 20;
+        private const double cGazeDotDrawingIntlMilliSec = 200;
 
         //--system settings---------------------
         public Boolean bGlobalSettingFramed;
@@ -67,6 +70,8 @@ namespace WPFDemoServer
         private ConcurrentQueue<String> cmdQueue;
         private ConcurrentQueue<Double> frameDistQueue;
         private ConcurrentQueue<Point> qGazePosQueue;
+        private ConcurrentQueue<Point> qGazeDwellQueue;
+        private ConcurrentQueue<bool> qGazeDwellFlagQueue;
 
         //--system status-----------------------
         private System.Windows.Point realMouseRelativePos;
@@ -90,7 +95,6 @@ namespace WPFDemoServer
         private Int16 move_count;
         public Int16 task_count;
         private Int64 nLastTimeStamp;
-        private Int16 nTickCount;
         private Double dFramePerSec;
 
         private Boolean bGazeDwelling;
@@ -104,16 +108,18 @@ namespace WPFDemoServer
         private System.Diagnostics.Stopwatch fpsStopwatch;
         private System.Diagnostics.Stopwatch frameAppearStopwatch;
         private DispatcherTimer timer;
+        private Int16 nTickCount;
         private DispatcherTimer gazeTimer;
+        private Int16 nGazeTickCount;
         private System.Timers.Timer movementTimer;
         //---file---------------
         public StreamWriter fileWriter;
         public StreamWriter logWriter;
         //---graphic------------
         private Ellipse[] highLight;
+        private Ellipse[] aDwellDots;
         //---sub window---------
         private Window1 dlgWindow;
-
 
 
         /// <summary>
@@ -162,7 +168,6 @@ namespace WPFDemoServer
             task_count = 12;
 
             nLastTimeStamp = 0;
-            nTickCount = 0;
             dFramePerSec = 0;
 
             boxPosQueue = new ConcurrentQueue<Point>();
@@ -172,6 +177,8 @@ namespace WPFDemoServer
             cmdQueue = new ConcurrentQueue<String>();
             frameDistQueue = new ConcurrentQueue<Double>();
             qGazePosQueue = new ConcurrentQueue<Point>();
+            qGazeDwellQueue = new ConcurrentQueue<Point>();
+            qGazeDwellFlagQueue = new ConcurrentQueue<bool>();
 
             stopwatch = new System.Diagnostics.Stopwatch();
             dwellStopwatch = new System.Diagnostics.Stopwatch();
@@ -182,10 +189,12 @@ namespace WPFDemoServer
             timer = new DispatcherTimer(DispatcherPriority.Background);
             timer.Interval = TimeSpan.FromTicks(10);
             timer.Tick += new EventHandler(timer_Tick);
+            nTickCount = 0;
 
             gazeTimer = new DispatcherTimer(DispatcherPriority.Background);
             gazeTimer.Interval = TimeSpan.FromMilliseconds(cGazeCheckIntlMilliSec);
             gazeTimer.Tick += new EventHandler(gazeTimer_Tick);
+            nGazeTickCount = 0;
 
             movementTimer = new System.Timers.Timer();
             movementTimer.Interval = 100;
@@ -193,19 +202,34 @@ namespace WPFDemoServer
 
 
             highLight = new Ellipse[10];
-            for (int i = 0; i < highLight.Length; i++)
+            SolidColorBrush ellipseBrush = new SolidColorBrush();
+            ellipseBrush.Color = Colors.White;
+            for (int i = 0; i < highLight.Length; ++i)
             {
                 highLight[i] = new Ellipse();
-                SolidColorBrush ellipseBrush = new SolidColorBrush();
-                ellipseBrush.Color = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF);
-                highLight[i].StrokeThickness = 5;
                 highLight[i].Opacity = 0;
                 highLight[i].Stroke = ellipseBrush;
+                highLight[i].StrokeThickness = 5;
                 highLight[i].Width = ellipseTarget.Width + 10.0 * i;
                 highLight[i].Height = ellipseTarget.Height + 10.0 * i;
 
                 canvas1.Children.Add(highLight[i]);
             }
+
+            aDwellDots = new Ellipse[cGazeDwellSampleCount];
+            SolidColorBrush dotsBrush = new SolidColorBrush();
+            dotsBrush.Color = Colors.Yellow;
+            for (int i = 0; i < aDwellDots.Length; ++i)
+            {
+                aDwellDots[i] = new Ellipse();
+                aDwellDots[i].Stroke = dotsBrush;
+                aDwellDots[i].StrokeThickness = 1;
+                aDwellDots[i].Width = 8;
+                aDwellDots[i].Height = 8;
+
+                canvas1.Children.Add(aDwellDots[i]);
+            }
+
 
             dlgWindow = new Window1();
             dlgWindow.Owner = this;
@@ -222,12 +246,11 @@ namespace WPFDemoServer
         private void gazeTimer_Tick(object sender, EventArgs e)
         {
             //Gaze point queue
-            qGazePosQueue.Enqueue(
-                new Point(
-                    ellipseLaserPoint.Margin.Left + ellipseLaserPoint.ActualWidth / 2,
-                    ellipseLaserPoint.Margin.Left + ellipseLaserPoint.ActualHeight / 2
-                )
+            Point currentGaze = new Point(
+                ellipseLaserPoint.Margin.Left + ellipseLaserPoint.ActualWidth / 2,
+                ellipseLaserPoint.Margin.Top + ellipseLaserPoint.ActualHeight / 2
             );
+            qGazePosQueue.Enqueue(currentGaze);
 
             if (qGazePosQueue.Count > cGazePosQueueLength)
             {
@@ -271,6 +294,30 @@ namespace WPFDemoServer
                         bGazeDwelling = true;
                         ellipseLaserPoint.Fill = new SolidColorBrush(Color.FromArgb(0xff, 0x58, 0x1b, 0xa2));
                         rectangle1.Fill = new SolidColorBrush(Color.FromArgb(0x48, 0x1e, 0xad, 0xfa));
+                    }
+                }
+            }//if (qGazePosQueue.Count > cGazePosQueueLength)
+
+            ++nGazeTickCount;
+
+            if(nGazeTickCount % (cGazeDotDrawingIntlMilliSec / cGazeCheckIntlMilliSec) == 0 )
+            {
+                nGazeTickCount = 0;
+
+                if(bGazeDwelling)
+                {
+                    qGazeDwellQueue.Enqueue(currentGaze);
+                    Point trashpoint = new Point();
+                    while (qGazeDwellQueue.Count > cGazeDwellSampleCount)
+                    {
+                        qGazeDwellQueue.TryDequeue(out trashpoint);
+                    }
+                }
+                else
+                {
+                    if(qGazeDwellQueue.Count != 0)
+                    {
+                        qGazeDwellQueue = new ConcurrentQueue<Point>();
                     }
                 }
             }
@@ -333,13 +380,16 @@ namespace WPFDemoServer
             mouseCurrentPos = new System.Windows.Point(ellipse1.Margin.Left + ellipse1.Width / 2, ellipse1.Margin.Top + ellipse1.Height / 2);
             frameCurrentPos = new System.Windows.Point(rectangle1.Margin.Left + rectangle1.Width / 2, rectangle1.Margin.Top + rectangle1.Height / 2);
 
-            if (normalizePos(ref mouseCurrentPos))
+            //
+            // Move the cursor(shape)
+            if (normalizePos(ref mouseCurrentPos)) //Normalize cursor position so that it is inside the bound of main window
             {
                 ellipse1.Margin = new Thickness(mouseCurrentPos.X - ellipse1.Width / 2, mouseCurrentPos.Y - ellipse1.Height / 2, 0, 0);
             }
 
-
-            if (bGlobalSettingFramed)
+            //
+            // Put the cursor inside the Frame
+            if (bGlobalSettingFramed) 
             {
                 if(ellipseLaserPoint.Visibility != Visibility.Hidden)
                 {
@@ -387,6 +437,8 @@ namespace WPFDemoServer
                 }
             }
 
+            //
+            // Move mouse-moving indicator and set its visibility
             ellipseMouseRing.Margin = new Thickness(ellipse1.Margin.Left + (ellipse1.Width - ellipseMouseRing.Width) / 2,
                                                     ellipse1.Margin.Top + (ellipse1.Height - ellipseMouseRing.Height) / 2,
                                                     0, 0);
@@ -399,8 +451,12 @@ namespace WPFDemoServer
                 ellipseMouseRing.Visibility = Visibility.Hidden;
             }
 
+            //
+            // start dwelling clicking mechanism 
             if (bTestStarted) performDwellClick();
 
+            //
+            // Remove frame if gaze not present
             if (bShowFrame)
             {
                 if (!frameAppearStopwatch.IsRunning)
@@ -409,7 +465,7 @@ namespace WPFDemoServer
                 }
                 else
                 {
-                    if (frameAppearStopwatch.ElapsedMilliseconds > 400)
+                    if (frameAppearStopwatch.ElapsedMilliseconds > cFrameRemainTimeMS)
                     {
                         bShowFrame = false;
                         bFrameFirstMove = true;
@@ -419,9 +475,44 @@ namespace WPFDemoServer
                 }
             }
 
-            nTickCount++;
+            //
+            // Draw Gaze Points while gaze-dwelling & frame presenting
+            if (!bShowFrame)
+            {
+                for (int i = 0; i < cGazeDwellSampleCount; ++i)
+                {
+                    aDwellDots[i].Visibility = Visibility.Hidden;
+                }
+            }
+            else // when the frame is showing up
+            {
+                if (bGazeDwelling)
+                {
+                    for (int i = 0; i < qGazeDwellQueue.Count; ++i)
+                    {
+                        aDwellDots[i].Margin = new Thickness(
+                            qGazeDwellQueue.ElementAt(i).X - aDwellDots[i].Width / 2,
+                            qGazeDwellQueue.ElementAt(i).Y - aDwellDots[i].Width / 2, 0, 0);
+                        aDwellDots[i].Visibility = Visibility.Visible;
+                    }
+                    for (int i = qGazeDwellQueue.Count; i < cGazeDwellSampleCount; ++i)
+                    {
+                        aDwellDots[i].Visibility = Visibility.Hidden;
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < cGazeDwellSampleCount; ++i)
+                    {
+                        aDwellDots[i].Visibility = Visibility.Hidden;
+                    }
+                }
+            }
 
-            if (nTickCount % 20 == 0) //less frequently refreshed contents
+            // ====== less frequently refreshed contents ==========
+            ++nTickCount;
+
+            if (nTickCount % 20 == 0) 
             {
                 //UI: command list, OSD
                 String[] commands = new String[cmdQueueLength];
