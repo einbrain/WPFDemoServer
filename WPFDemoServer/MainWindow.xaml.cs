@@ -160,8 +160,8 @@ namespace WPFDemoServer
             }
             cursorHeight = ellipse1.Height;
             cursorWidth = ellipse1.Width;
-            windowHeight = this.Height;
-            windowWidth = this.Width;
+            windowHeight = canvas1.ActualHeight;
+            windowWidth = canvas1.ActualWidth;
 
             bExitPending = false;
             bTestStarted = false;
@@ -267,14 +267,16 @@ namespace WPFDemoServer
             }
 
             homingArea = new Rectangle();
+            homingArea.Width = cHomingAreaWidth;
+            homingArea.Height = cHomingAreaHeight;
             homingArea.Margin = new Thickness(
                 windowWidth / 2 - cHomingAreaWidth / 2,
                 windowHeight / 2 - cHomingAreaHeight / 2,
-                windowWidth / 2 + cHomingAreaWidth / 2,
-                windowHeight / 2 + cHomingAreaHeight / 2
+                0,0
             );
-            homingArea.Opacity = 50;
             homingArea.Fill = Brushes.Beige;
+            homingArea.Opacity = 30;
+            canvas1.Children.Add(homingArea);
 
             dlgWindow = new Window1();
             dlgWindow.Owner = this;
@@ -410,7 +412,7 @@ namespace WPFDemoServer
                 }
             }
 
-            if (canvas1 != null && homingArea != null)
+            if (homingArea != null)
             {
                 homingArea.Margin = new Thickness(
                     windowWidth / 2 - cHomingAreaWidth / 2,
@@ -1000,13 +1002,15 @@ namespace WPFDemoServer
                 {
                     gotTarget();
                     bGazeHoming = true;
+                    gazeDwellStopwatch.Stop();
+                    gazeDwellStopwatch.Reset();
                 }
             }
             if(bGazeHoming)
             {
-                if(currentGazeAvgPos.X < homingArea.Margin.Right
+                if(currentGazeAvgPos.X < homingArea.Margin.Left + cHomingAreaWidth
                     && currentGazeAvgPos.X > homingArea.Margin.Left
-                    && currentGazeAvgPos.Y < homingArea.Margin.Bottom
+                    && currentGazeAvgPos.Y < homingArea.Margin.Top + cHomingAreaHeight
                     && currentGazeAvgPos.Y > homingArea.Margin.Top)
                 {
                     bGazeHoming = false;
@@ -1144,8 +1148,8 @@ namespace WPFDemoServer
             ellipseTarget.Visibility = Visibility.Hidden;
 
             Point currentGazeAvgPosRelevant2Target = new Point(
-                currentGazeAvgPos.X - (ellipseTarget.Margin.Left + ellipseTarget.ActualWidth / 2),
-                currentGazeAvgPos.Y - (ellipseTarget.Margin.Top + ellipseTarget.ActualHeight / 2)
+                 (ellipseTarget.Margin.Left + ellipseTarget.ActualWidth / 2) - currentGazeAvgPos.X,
+                 (ellipseTarget.Margin.Top + ellipseTarget.ActualHeight / 2) - currentGazeAvgPos.Y
             );
 
             task_count--;
@@ -1187,7 +1191,10 @@ namespace WPFDemoServer
 
         private void gazeHomed()
         {
-            setTarget();
+            if (bTestStarted)
+            {
+                setTarget();
+            }
         }
 
         /// <summary>
