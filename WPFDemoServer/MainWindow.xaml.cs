@@ -41,11 +41,18 @@ namespace WPFDemoServer
         private const Int16 cmdQueueLength = 10;
         private const Int16 frameDistQueueLength = 10;
         private const Int16 cFrameRemainTimeMS = 400;
+        private const Int16 cDwellClickingThreshMS = 700;
         private const Int16 cGazePosQueueLength = 10;
         private const double cGazeCheckIntlMilliSec = 50;
         private const double cGazeActivityThresh = 225;
         private const int cGazeDwellSampleCount = 20;
         private const double cGazeDotDrawingIntlMilliSec = 200;
+        private const int cGridColumn = 5;
+        private const int cGridRow = 3;
+        private const double cGridDiameter = 20;
+        private const Int16 cGazeDwellingThreshMS = 2000;
+        private const double cHomingAreaWidth = 100;
+        private const double cHomingAreaHeight = 100;
 
         //--system settings---------------------
         public Boolean bGlobalSettingFramed;
@@ -66,7 +73,7 @@ namespace WPFDemoServer
         private ConcurrentQueue<Point> boxPosQueue;
         private ConcurrentQueue<Point> boxPosOffsetQueue;
         private ConcurrentQueue<Point> cursorPosQueue;
-        private ConcurrentQueue<Boolean> lmbQueue;
+        private ConcurrentQueue<bool> lmbQueue;
         private ConcurrentQueue<String> cmdQueue;
         private ConcurrentQueue<Double> frameDistQueue;
         private ConcurrentQueue<Point> qGazePosQueue;
@@ -75,20 +82,19 @@ namespace WPFDemoServer
 
         //--system status-----------------------
         private System.Windows.Point realMouseRelativePos;
+        private System.Windows.Point currentGazeAvgPos;
         private Boolean bExitPending;
         private Boolean bTestStarted;
         private Boolean bShowFrame;
         private Boolean bMovingMouse;
         private Boolean bFrameFirstMove;
         private Boolean bMouseFirstMove;
-        private Boolean bFirstTarget;
         private Boolean bFirstEnter;
         private Boolean bCursorOnFrame;
         private System.Windows.Point frameLastPos;
         private System.Windows.Point frameCurrentPos;
         private System.Windows.Point mouseLastPos;
         private System.Windows.Point mouseCurrentPos;
-        private System.Windows.Point targetLastPos;
         private Double frameCurrentOffsetLength;
         private Double mouseCurrentOffsetLength;
         private Int16 miss_count;
@@ -97,8 +103,9 @@ namespace WPFDemoServer
         private Int64 nLastTimeStamp;
         private Double dFramePerSec;
 
-        private Boolean bGazeDwelling;
+        private bool bGazeDwelling;
         private Double dGazeActivity;
+        private bool bGazeHoming;
 
         //--misc components---------------------
         //---time---------------
@@ -106,10 +113,12 @@ namespace WPFDemoServer
         private System.Diagnostics.Stopwatch dwellStopwatch;
         private System.Diagnostics.Stopwatch moveIntervalStopwatch;
         private System.Diagnostics.Stopwatch fpsStopwatch;
-        private System.Diagnostics.Stopwatch frameAppearStopwatch;
+        private System.Diagnostics.Stopwatch frameAppearStopwatch;      // frame remain visible for a while after dead control signal
+        private System.Diagnostics.Stopwatch gazeDwellStopwatch;
+
         private DispatcherTimer timer;
         private Int16 nTickCount;
-        private DispatcherTimer gazeTimer;
+        private DispatcherTimer gazeTimer;                          
         private Int16 nGazeTickCount;
         private System.Timers.Timer movementTimer;
         //---file---------------
@@ -118,6 +127,8 @@ namespace WPFDemoServer
         //---graphic------------
         private Ellipse[] highLight;
         private Ellipse[] aDwellDots;
+        private Ellipse[] aGridDots;
+        private Rectangle homingArea;
         //---sub window---------
         private Window1 dlgWindow;
 
@@ -127,7 +138,8 @@ namespace WPFDemoServer
         /// </summary>
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            bGlobalSettingFramed = true;
+            currentGazeAvgPos = new Point(0, 0);
+            bGlobalSettingFramed = false;
             bGlobalSettingChangableFrame = true;
             bGlobalSettingMouseControl = false;
             bGlobalSettingUseLine = false;
@@ -158,14 +170,16 @@ namespace WPFDemoServer
             bShowFrame = false;
             bMovingMouse = false;
             bCursorOnFrame = false;
+
             bGazeDwelling = true;
             dGazeActivity = 0.0f;
+            bGazeHoming = false;
 
             bFirstEnter = true;
-            bFirstTarget = true;
+            //bFirstTarget = true;
             miss_count = 0;
             move_count = 1;
-            task_count = 12;
+            task_count = cGridColumn * cGridRow;
 
             nLastTimeStamp = 0;
             dFramePerSec = 0;
@@ -185,6 +199,7 @@ namespace WPFDemoServer
             moveIntervalStopwatch = new System.Diagnostics.Stopwatch();
             fpsStopwatch = new System.Diagnostics.Stopwatch();
             frameAppearStopwatch = new System.Diagnostics.Stopwatch();
+            gazeDwellStopwatch = new System.Diagnostics.Stopwatch();
 
             timer = new DispatcherTimer(DispatcherPriority.Background);
             timer.Interval = TimeSpan.FromTicks(10);
@@ -230,6 +245,36 @@ namespace WPFDemoServer
                 canvas1.Children.Add(aDwellDots[i]);
             }
 
+            aGridDots = new Ellipse[cGridColumn*cGridRow];
+            SolidColorBrush gridBrush = new SolidColorBrush();
+            gridBrush.Color = Colors.DarkCyan;
+            for(int i = 0; i < cGridRow; ++i)
+            {
+                for(int j = 0; j < cGridColumn; ++j)
+                {
+                    aGridDots[i * cGridColumn + j] = new Ellipse();
+                    aGridDots[i * cGridColumn + j].Fill = gridBrush;
+                    aGridDots[i * cGridColumn + j].Width = cGridDiameter;
+                    aGridDots[i * cGridColumn + j].Height = cGridDiameter;
+
+                    canvas1.Children.Add(aGridDots[i * cGridColumn + j]);
+                    aGridDots[i * cGridColumn + j].Margin = new Thickness(
+                        (canvas1.ActualWidth / (cGridColumn + 1)) * (j + 1) - (cGridDiameter / 2),
+                        (canvas1.ActualHeight / (cGridRow + 1)) * (i + 1) - (cGridDiameter / 2),
+                        0, 0
+                    );
+                }
+            }
+
+            homingArea = new Rectangle();
+            homingArea.Margin = new Thickness(
+                windowWidth / 2 - cHomingAreaWidth / 2,
+                windowHeight / 2 - cHomingAreaHeight / 2,
+                windowWidth / 2 + cHomingAreaWidth / 2,
+                windowHeight / 2 + cHomingAreaHeight / 2
+            );
+            homingArea.Opacity = 50;
+            homingArea.Fill = Brushes.Beige;
 
             dlgWindow = new Window1();
             dlgWindow.Owner = this;
@@ -269,6 +314,7 @@ namespace WPFDemoServer
                 }
                 xAverage /= cGazePosQueueLength;
                 yAverage /= cGazePosQueueLength;
+                currentGazeAvgPos = new Point(xAverage, yAverage);
 
                 for (id = 0; id < cGazePosQueueLength; ++id)
                 {
@@ -285,6 +331,8 @@ namespace WPFDemoServer
                         bGazeDwelling = false;
                         ellipseLaserPoint.Fill = new SolidColorBrush(Color.FromArgb(0xff, 0xfa, 0xf3, 0x1e));
                         rectangle1.Fill = new SolidColorBrush(Color.FromArgb(0x48, 0x8a, 0xef, 0xb8));
+                        gazeDwellStopwatch.Stop();
+                        gazeDwellStopwatch.Reset();
                     }
                 }
                 else
@@ -292,8 +340,13 @@ namespace WPFDemoServer
                     if(!bGazeDwelling)
                     {
                         bGazeDwelling = true;
+
                         ellipseLaserPoint.Fill = new SolidColorBrush(Color.FromArgb(0xff, 0x58, 0x1b, 0xa2));
                         rectangle1.Fill = new SolidColorBrush(Color.FromArgb(0x48, 0x1e, 0xad, 0xfa));
+                        if(!bGazeHoming)
+                        {
+                            gazeDwellStopwatch.Start();
+                        }
                     }
                 }
             }//if (qGazePosQueue.Count > cGazePosQueueLength)
@@ -339,8 +392,33 @@ namespace WPFDemoServer
 
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            windowHeight = this.ActualHeight;
-            windowWidth = this.ActualWidth;
+            windowHeight = canvas1.ActualHeight;
+            windowWidth = canvas1.ActualWidth;
+
+            if (aGridDots != null)
+            {
+                for (int i = 0; i < cGridRow; ++i)
+                {
+                    for (int j = 0; j < cGridColumn; ++j)
+                    {
+                        aGridDots[i * cGridColumn + j].Margin = new Thickness(
+                            (canvas1.ActualWidth / (cGridColumn + 1)) * (j + 1) - (cGridDiameter / 2),
+                            (canvas1.ActualHeight / (cGridRow + 1)) * (i + 1) - (cGridDiameter / 2),
+                            0, 0
+                        );
+                    }
+                }
+            }
+
+            if (canvas1 != null && homingArea != null)
+            {
+                homingArea.Margin = new Thickness(
+                    windowWidth / 2 - cHomingAreaWidth / 2,
+                    windowHeight / 2 - cHomingAreaHeight / 2,
+                    windowWidth / 2 + cHomingAreaWidth / 2,
+                    windowHeight / 2 + cHomingAreaHeight / 2
+                );
+            }
         }
 
         private void Window_Closed(object sender, EventArgs e)
@@ -453,7 +531,7 @@ namespace WPFDemoServer
 
             //
             // start dwelling clicking mechanism 
-            if (bTestStarted) performDwellClick();
+            if (bTestStarted) performGaze();
 
             //
             // Remove frame if gaze not present
@@ -872,7 +950,10 @@ namespace WPFDemoServer
                 }
             }
         }
-
+        
+        /// <summary>
+        /// NOT IN USE
+        /// </summary>
         private void performDwellClick() 
         {
             if (ellipse1.Margin.Left + ellipse1.Width / 2 > ellipseTarget.Margin.Left
@@ -886,7 +967,7 @@ namespace WPFDemoServer
                     dwellStopwatch.Reset();
                     dwellStopwatch.Start();
                 }
-                else if(dwellStopwatch.ElapsedMilliseconds >= 700)
+                else if(dwellStopwatch.ElapsedMilliseconds >= cDwellClickingThreshMS)
                 {
                     dwellStopwatch.Stop();
                     dwellStopwatch.Reset();
@@ -899,7 +980,7 @@ namespace WPFDemoServer
             {
                 if(!bFirstEnter)
                 {
-                    if (dwellStopwatch.ElapsedMilliseconds > 100 && dwellStopwatch.ElapsedMilliseconds < 700) 
+                    if (dwellStopwatch.ElapsedMilliseconds > 100 && dwellStopwatch.ElapsedMilliseconds < cDwellClickingThreshMS) 
                     {
                         missedTarget();
                     }
@@ -907,6 +988,29 @@ namespace WPFDemoServer
                     dwellStopwatch.Reset();
 
                     bFirstEnter = true;
+                }
+            }
+        }
+
+        private void performGaze()
+        {
+            if(bGazeDwelling && !bGazeHoming)
+            {
+                if(gazeDwellStopwatch.ElapsedMilliseconds >= cGazeDwellingThreshMS)
+                {
+                    gotTarget();
+                    bGazeHoming = true;
+                }
+            }
+            if(bGazeHoming)
+            {
+                if(currentGazeAvgPos.X < homingArea.Margin.Right
+                    && currentGazeAvgPos.X > homingArea.Margin.Left
+                    && currentGazeAvgPos.Y < homingArea.Margin.Bottom
+                    && currentGazeAvgPos.Y > homingArea.Margin.Top)
+                {
+                    bGazeHoming = false;
+                    gazeHomed();
                 }
             }
         }
@@ -1015,53 +1119,21 @@ namespace WPFDemoServer
 
         private void setTarget()
         {
-            System.Windows.Point randomP = new Point();
-            Random rnd = new Random();
-            Boolean bNotInBound = true;
-
+            System.Windows.Point targetPos = new Point();
             double h = canvas1.ActualHeight;
             double w = canvas1.ActualWidth;
-            double margin = 20;
 
-            if (bFirstTarget)
-            {
-                Int32 x = rnd.Next(Convert.ToInt32(1 + margin), Convert.ToInt32(w - margin));
-                Int32 y = rnd.Next(Convert.ToInt32(1 + margin), Convert.ToInt32(h - margin));
-
-                randomP = new Point(x, y);
-                targetLastPos = randomP;
-                bFirstTarget = false;
-            }
-            else
-            {
-                do
-                {
-                    randomP.X = rnd.Next(Convert.ToInt32(Math.Max(1 + margin, targetLastPos.X - w / 2.0)),
-                                            Convert.ToInt32(Math.Min(w - margin, targetLastPos.X + w / 2.0)));
-                    Double y = Math.Sqrt(Math.Pow(w / 2.0, 2.0) - Math.Pow(randomP.X - targetLastPos.X, 2.0));
-                    if (y + targetLastPos.Y > 1 + margin && y + targetLastPos.Y < h - margin)
-                    {
-                        randomP.Y = y + targetLastPos.Y;
-                        bNotInBound = false;
-                    }
-                    if (-y + targetLastPos.Y > 1 + margin && -y + targetLastPos.Y < h - margin)
-                    {
-                        randomP.Y = -y + targetLastPos.Y;
-                        bNotInBound = false;
-                    }
-                }
-                while (bNotInBound);
-                targetLastPos = randomP;
-            }
+            // grid positions
+            int gridIdx = cGridRow * cGridColumn - task_count;
+            targetPos.X = aGridDots[gridIdx].Margin.Left + (cGridDiameter / 2);
+            targetPos.Y = aGridDots[gridIdx].Margin.Top + (cGridDiameter / 2);
 
             stopwatch.Stop();
             stopwatch.Reset();
             ellipseTarget.Visibility = Visibility.Visible;
-            ellipseTarget.Margin = new Thickness(randomP.X - ellipseTarget.Width / 2, randomP.Y - ellipseTarget.Height / 2, 0, 0);
-            targetBlink(randomP.X, randomP.Y);
+            ellipseTarget.Margin = new Thickness(targetPos.X - ellipseTarget.Width / 2, targetPos.Y - ellipseTarget.Height / 2, 0, 0);
+            targetBlink(targetPos.X, targetPos.Y);
             stopwatch.Start();
-
-            task_count--;
         }
 
         private void gotTarget()
@@ -1069,25 +1141,27 @@ namespace WPFDemoServer
             stopwatch.Stop();
             long millisec = stopwatch.ElapsedMilliseconds;
             stopwatch.Reset();
-            
+            ellipseTarget.Visibility = Visibility.Hidden;
 
+            Point currentGazeAvgPosRelevant2Target = new Point(
+                currentGazeAvgPos.X - (ellipseTarget.Margin.Left + ellipseTarget.ActualWidth / 2),
+                currentGazeAvgPos.Y - (ellipseTarget.Margin.Top + ellipseTarget.ActualHeight / 2)
+            );
+
+            task_count--;
             try
             {
-                if (task_count > 0)
+                if (fileWriter != null)
                 {
-                    if (fileWriter != null)
-                    {
-                        fileWriter.WriteLine("{0},{1},{2}", millisec, miss_count, move_count);
-                    }
-                    setTarget();
+                    fileWriter.WriteLine("{0},{1}", currentGazeAvgPosRelevant2Target.X, currentGazeAvgPosRelevant2Target.Y);
                 }
-                else
+
+                if (task_count <= 0)
                 {
                     movementTimer.Stop();
 
                     if (fileWriter != null)
                     {
-                        fileWriter.WriteLine("{0},{1},{2}", millisec, miss_count, move_count);
                         fileWriter.Flush();
                     }
                     if (logWriter != null)
@@ -1095,8 +1169,7 @@ namespace WPFDemoServer
                         logWriter.Flush();
                     }
 
-                    ellipseTarget.Visibility = Visibility.Hidden;
-                    bFirstTarget = true;
+                    //bFirstTarget = true;
                     bTestStarted = false;
                 }
             }
@@ -1106,10 +1179,20 @@ namespace WPFDemoServer
                 return;
             }
 
+
+            
             miss_count = 0;
             move_count = 1;
         }
 
+        private void gazeHomed()
+        {
+            setTarget();
+        }
+
+        /// <summary>
+        /// NOT IN USE
+        /// </summary>
         private void missedTarget()
         {
             miss_count++;
