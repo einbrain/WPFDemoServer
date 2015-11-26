@@ -1,6 +1,4 @@
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\bin\Debug\WPFDemoServer.exe.config
-D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.exe
-D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.pdb
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\bin\Debug\WPFDemoServer.exe
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\bin\Debug\WPFDemoServer.pdb
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.csprojResolveAssemblyReference.cache
@@ -13,3 +11,5 @@ D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer_MarkupCompi
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.g.resources
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.Properties.Resources.resources
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.csproj.GenerateResource.Cache
+D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.exe
+D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.pdb
