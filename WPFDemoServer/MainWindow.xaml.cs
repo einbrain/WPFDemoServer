@@ -41,18 +41,23 @@ namespace WPFDemoServer
         private const Int16 cmdQueueLength = 10;
         private const Int16 frameDistQueueLength = 10;
         private const Int16 cFrameRemainTimeMS = 400;
+            //-for gaze test--------------------
         private const Int16 cDwellClickingThreshMS = 700;
         private const Int16 cGazePosQueueLength = 10;
         private const double cGazeCheckIntlMilliSec = 50;
         private const double cGazeActivityThresh = 225;
         private const int cGazeDwellSampleCount = 20;
         private const double cGazeDotDrawingIntlMilliSec = 200;
-        private const int cGridColumn = 5;
-        private const int cGridRow = 3;
+        private const int cGridColumn = 6;
+        private const int cGridRow = 4;
+        private const int cGridMarginX = 20;
+        private const int cGirdMarginY = 20; 
         private const double cGridDiameter = 20;
         private const Int16 cGazeDwellingThreshMS = 2000;
-        private const double cHomingAreaWidth = 100;
-        private const double cHomingAreaHeight = 100;
+        private const double cHomingAreaWidth = 150;
+        private const double cHomingAreaHeight = 150;
+        private const int cTaskRepeatCnt = 2;
+
 
         //--system settings---------------------
         public Boolean bGlobalSettingFramed;
@@ -99,7 +104,7 @@ namespace WPFDemoServer
         private Double mouseCurrentOffsetLength;
         private Int16 miss_count;
         private Int16 move_count;
-        public Int16 task_count;
+        public int task_count;
         private Int64 nLastTimeStamp;
         private Double dFramePerSec;
 
@@ -127,8 +132,37 @@ namespace WPFDemoServer
         //---graphic------------
         private Ellipse[] highLight;
         private Ellipse[] aDwellDots;
-        private Ellipse[] aGridDots;
         private Rectangle homingArea;
+        //---GridDots-----------
+        public struct GridPos
+        {
+            public int i, j;
+
+            public GridPos(int p1, int p2)
+            {
+                i = p1;
+                j = p2;
+            }
+        }
+        private GridPos[] gridMask;
+
+        public struct GridDot
+        {
+            public Ellipse dot;
+            public double x_percent, y_percent;
+
+            public GridDot(Ellipse dot_in, double x_in, double y_in)
+            {
+                dot = dot_in;
+                x_percent = x_in;
+                y_percent = y_in;
+            }
+        }
+        private List<GridDot> aGridDots;
+
+        private int[] gTaskOrder;
+
+
         //---sub window---------
         private Window1 dlgWindow;
 
@@ -138,6 +172,9 @@ namespace WPFDemoServer
         /// </summary>
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            //gridMask = new GridPos[] { new GridPos(1,2) };
+            gridMask = new GridPos[] { };
+
             currentGazeAvgPos = new Point(0, 0);
             bGlobalSettingFramed = false;
             bGlobalSettingChangableFrame = true;
@@ -151,15 +188,15 @@ namespace WPFDemoServer
             if (this.ActualWidth > this.ActualHeight)
             {
                 rectangle1.Height = this.ActualHeight / frameScale;
-                rectangle1.Width = rectangle1.Height * 1.618;
+                rectangle1.Width = rectangle1.ActualHeight * 1.618;
             }
             else
             {
                 rectangle1.Width = this.ActualWidth / frameScale;
-                rectangle1.Height = rectangle1.Width / 1.618;
+                rectangle1.Height = rectangle1.ActualWidth / 1.618;
             }
-            cursorHeight = ellipse1.Height;
-            cursorWidth = ellipse1.Width;
+            cursorHeight = ellipse1.ActualHeight;
+            cursorWidth = ellipse1.ActualWidth;
             windowHeight = canvas1.ActualHeight;
             windowWidth = canvas1.ActualWidth;
 
@@ -179,7 +216,6 @@ namespace WPFDemoServer
             //bFirstTarget = true;
             miss_count = 0;
             move_count = 1;
-            task_count = cGridColumn * cGridRow;
 
             nLastTimeStamp = 0;
             dFramePerSec = 0;
@@ -225,8 +261,8 @@ namespace WPFDemoServer
                 highLight[i].Opacity = 0;
                 highLight[i].Stroke = ellipseBrush;
                 highLight[i].StrokeThickness = 5;
-                highLight[i].Width = ellipseTarget.Width + 10.0 * i;
-                highLight[i].Height = ellipseTarget.Height + 10.0 * i;
+                highLight[i].Width = ellipseTarget.ActualWidth + 10.0 * i;
+                highLight[i].Height = ellipseTarget.ActualHeight + 10.0 * i;
 
                 canvas1.Children.Add(highLight[i]);
             }
@@ -245,24 +281,37 @@ namespace WPFDemoServer
                 canvas1.Children.Add(aDwellDots[i]);
             }
 
-            aGridDots = new Ellipse[cGridColumn*cGridRow];
+            // TODO : reposition the grid dots
+            aGridDots = new List<GridDot>();
             SolidColorBrush gridBrush = new SolidColorBrush();
             gridBrush.Color = Colors.DarkCyan;
             for(int i = 0; i < cGridRow; ++i)
             {
                 for(int j = 0; j < cGridColumn; ++j)
                 {
-                    aGridDots[i * cGridColumn + j] = new Ellipse();
-                    aGridDots[i * cGridColumn + j].Fill = gridBrush;
-                    aGridDots[i * cGridColumn + j].Width = cGridDiameter;
-                    aGridDots[i * cGridColumn + j].Height = cGridDiameter;
+                    if (Array.IndexOf(gridMask, new GridPos(i, j)) == -1)
+                    {
+                        Ellipse newDot = new Ellipse();
+                        newDot = new Ellipse();
+                        newDot.Fill = gridBrush;
+                        newDot.Width = cGridDiameter;
+                        newDot.Height = cGridDiameter;
+                        //newGridDot.Visibility = Visibility.Hidden;
 
-                    canvas1.Children.Add(aGridDots[i * cGridColumn + j]);
-                    aGridDots[i * cGridColumn + j].Margin = new Thickness(
-                        (canvas1.ActualWidth / (cGridColumn + 1)) * (j + 1) - (cGridDiameter / 2),
-                        (canvas1.ActualHeight / (cGridRow + 1)) * (i + 1) - (cGridDiameter / 2),
-                        0, 0
-                    );
+                        canvas1.Children.Add(newDot);
+                        Canvas.SetLeft(newDot, (canvas1.ActualWidth - cGridMarginX * 2) / (cGridColumn - 1) * j + cGridMarginX - (cGridDiameter / 2));
+                        Canvas.SetTop(newDot, (canvas1.ActualHeight - cGirdMarginY * 2) / (cGridRow - 1) * i + cGirdMarginY - (cGridDiameter / 2));
+                        Canvas.SetZIndex(newDot, -1);
+
+                        // memorize the dot object and its proportional position
+                        aGridDots.Add(
+                            new GridDot(
+                                newDot,
+                                (Canvas.GetLeft(newDot) + (cGridDiameter / 2)) / canvas1.ActualWidth,
+                                (Canvas.GetTop(newDot) + (cGridDiameter / 2)) / canvas1.ActualHeight
+                            )
+                        );
+                    }
                 }
             }
 
@@ -274,9 +323,9 @@ namespace WPFDemoServer
                 windowHeight / 2 - cHomingAreaHeight / 2,
                 0,0
             );
-            homingArea.Fill = Brushes.Beige;
-            homingArea.Opacity = 30;
+            homingArea.Fill = new SolidColorBrush(Color.FromArgb(0x80, 0x16, 0xc1, 0xfa));
             canvas1.Children.Add(homingArea);
+            Canvas.SetZIndex(homingArea, -2);
 
             dlgWindow = new Window1();
             dlgWindow.Owner = this;
@@ -294,8 +343,8 @@ namespace WPFDemoServer
         {
             //Gaze point queue
             Point currentGaze = new Point(
-                ellipseLaserPoint.Margin.Left + ellipseLaserPoint.ActualWidth / 2,
-                ellipseLaserPoint.Margin.Top + ellipseLaserPoint.ActualHeight / 2
+                Canvas.GetLeft(ellipseLaserPoint) + ellipseLaserPoint.ActualWidth / 2,
+                Canvas.GetTop(ellipseLaserPoint) + ellipseLaserPoint.ActualHeight / 2
             );
             qGazePosQueue.Enqueue(currentGaze);
 
@@ -399,16 +448,10 @@ namespace WPFDemoServer
 
             if (aGridDots != null)
             {
-                for (int i = 0; i < cGridRow; ++i)
+                foreach (GridDot gridDot in aGridDots)
                 {
-                    for (int j = 0; j < cGridColumn; ++j)
-                    {
-                        aGridDots[i * cGridColumn + j].Margin = new Thickness(
-                            (canvas1.ActualWidth / (cGridColumn + 1)) * (j + 1) - (cGridDiameter / 2),
-                            (canvas1.ActualHeight / (cGridRow + 1)) * (i + 1) - (cGridDiameter / 2),
-                            0, 0
-                        );
-                    }
+                    Canvas.SetLeft(gridDot.dot, gridDot.x_percent * canvas1.ActualWidth - (cGridDiameter / 2));
+                    Canvas.SetTop(gridDot.dot, gridDot.y_percent * canvas1.ActualHeight - (cGridDiameter / 2));
                 }
             }
 
@@ -457,14 +500,15 @@ namespace WPFDemoServer
             moveFrame();
             moveMouse();
 
-            mouseCurrentPos = new System.Windows.Point(ellipse1.Margin.Left + ellipse1.Width / 2, ellipse1.Margin.Top + ellipse1.Height / 2);
-            frameCurrentPos = new System.Windows.Point(rectangle1.Margin.Left + rectangle1.Width / 2, rectangle1.Margin.Top + rectangle1.Height / 2);
+            mouseCurrentPos = new System.Windows.Point(Canvas.GetLeft(ellipse1) + ellipse1.ActualWidth / 2, Canvas.GetTop(ellipse1) + ellipse1.ActualHeight / 2);
+            frameCurrentPos = new System.Windows.Point(Canvas.GetLeft(rectangle1) + rectangle1.ActualWidth / 2, Canvas.GetTop(rectangle1) + rectangle1.ActualHeight / 2);
 
             //
             // Move the cursor(shape)
             if (normalizePos(ref mouseCurrentPos)) //Normalize cursor position so that it is inside the bound of main window
             {
-                ellipse1.Margin = new Thickness(mouseCurrentPos.X - ellipse1.Width / 2, mouseCurrentPos.Y - ellipse1.Height / 2, 0, 0);
+                Canvas.SetLeft(ellipse1, mouseCurrentPos.X - ellipse1.ActualWidth / 2);
+                Canvas.SetTop(ellipse1, mouseCurrentPos.Y - ellipse1.ActualHeight / 2);
             }
 
             //
@@ -483,15 +527,16 @@ namespace WPFDemoServer
                         bCursorOnFrame = true;
                         if (bGlobalSettingUseLine && bMovingMouse)
                         {
-                            line1.X1 = ellipse1.Margin.Left + ellipse1.Width / 2;
-                            line1.Y1 = ellipse1.Margin.Top + ellipse1.Height / 2;
-                            line1.X2 = rectangle1.Margin.Left + rectangle1.Width / 2;
-                            line1.Y2 = rectangle1.Margin.Top + rectangle1.Height / 2;
+                            line1.X1 = Canvas.GetLeft(ellipse1) + ellipse1.ActualWidth / 2;
+                            line1.Y1 = Canvas.GetTop(ellipse1) + ellipse1.ActualHeight / 2;
+                            line1.X2 = Canvas.GetLeft(rectangle1) + rectangle1.ActualWidth / 2;
+                            line1.Y2 = Canvas.GetTop(rectangle1) + rectangle1.ActualHeight / 2;
                             line1.Visibility = Visibility.Visible;
                         }
                         else
                         {
-                            ellipse1.Margin = new Thickness(mouseCurrentPos.X - ellipse1.Width / 2, mouseCurrentPos.Y - ellipse1.Height / 2, 0, 0);
+                            Canvas.SetLeft(ellipse1, mouseCurrentPos.X - ellipse1.ActualWidth / 2);
+                            Canvas.SetTop(ellipse1, mouseCurrentPos.Y - ellipse1.ActualHeight / 2);
                         }
                     }
                     else //cursor already in frame
@@ -519,9 +564,9 @@ namespace WPFDemoServer
 
             //
             // Move mouse-moving indicator and set its visibility
-            ellipseMouseRing.Margin = new Thickness(ellipse1.Margin.Left + (ellipse1.Width - ellipseMouseRing.Width) / 2,
-                                                    ellipse1.Margin.Top + (ellipse1.Height - ellipseMouseRing.Height) / 2,
-                                                    0, 0);
+            Canvas.SetLeft(ellipseMouseRing, Canvas.GetLeft(ellipse1) + (ellipse1.ActualWidth - ellipseMouseRing.ActualWidth) / 2);
+            Canvas.SetTop(ellipseMouseRing, Canvas.GetTop(ellipse1) + (ellipse1.ActualHeight - ellipseMouseRing.ActualHeight) / 2);
+
             if (bMovingMouse)
             {
                 ellipseMouseRing.Visibility = Visibility.Visible;
@@ -570,9 +615,8 @@ namespace WPFDemoServer
                 {
                     for (int i = 0; i < qGazeDwellQueue.Count; ++i)
                     {
-                        aDwellDots[i].Margin = new Thickness(
-                            qGazeDwellQueue.ElementAt(i).X - aDwellDots[i].Width / 2,
-                            qGazeDwellQueue.ElementAt(i).Y - aDwellDots[i].Width / 2, 0, 0);
+                        Canvas.SetLeft(aDwellDots[i], qGazeDwellQueue.ElementAt(i).X - aDwellDots[i].ActualWidth / 2);
+                        Canvas.SetTop(aDwellDots[i], qGazeDwellQueue.ElementAt(i).Y - aDwellDots[i].ActualHeight / 2);
                         aDwellDots[i].Visibility = Visibility.Visible;
                     }
                     for (int i = qGazeDwellQueue.Count; i < cGazeDwellSampleCount; ++i)
@@ -619,6 +663,8 @@ namespace WPFDemoServer
 
             if (nTickCount >= 100)
             {
+                label_resolution.Content = "CanvasRes: "+canvas1.ActualWidth + " × " + canvas1.ActualHeight;
+
                 long nNow = fpsStopwatch.ElapsedMilliseconds;
                 dFramePerSec = nTickCount * 1000 / (nNow - nLastTimeStamp);
                 if (nNow != nLastTimeStamp) label2.Content = Convert.ToString(Convert.ToInt32(dFramePerSec)) + " ticks/sec";
@@ -832,12 +878,12 @@ namespace WPFDemoServer
                     if (this.ActualWidth > this.ActualHeight)
                     {
                         rectangle1.Height = Math.Max(this.ActualHeight / frameScale - Math.Pow(frameCurrentOffsetLength, shrinkIndex), 0);
-                        rectangle1.Width = rectangle1.Height * 1.618;
+                        rectangle1.Width = rectangle1.ActualHeight * 1.618;
                     }
                     else
                     {
                         rectangle1.Width = Math.Max(this.ActualWidth / frameScale - Math.Pow(frameCurrentOffsetLength, shrinkIndex), 0);
-                        rectangle1.Height = rectangle1.Width / 1.618;
+                        rectangle1.Height = rectangle1.ActualWidth / 1.618;
                     }
                 }
                 else
@@ -845,23 +891,21 @@ namespace WPFDemoServer
                     if (this.ActualWidth > this.ActualHeight)
                     {
                         rectangle1.Height = this.ActualHeight / frameScale;
-                        rectangle1.Width = rectangle1.Height * 1.618;
+                        rectangle1.Width = rectangle1.ActualHeight * 1.618;
                     }
                     else
                     {
                         rectangle1.Width = this.ActualWidth / frameScale;
-                        rectangle1.Height = rectangle1.Width / 1.618;
+                        rectangle1.Height = rectangle1.ActualWidth / 1.618;
                     }
                 }
 
                 //Absolute move
                 while(!boxPosQueue.TryDequeue(out popup));
-                rectangle1.Margin = new Thickness(  popup.X - rectangle1.Width / 2,
-                                                    popup.Y - rectangle1.Height / 2,
-                                                    0, 0);
-                ellipseLaserPoint.Margin = new Thickness(   popup.X - ellipseLaserPoint.Width / 2,
-                                                            popup.Y - ellipseLaserPoint.Height / 2,
-                                                            0, 0);
+                Canvas.SetLeft(rectangle1, popup.X - rectangle1.ActualWidth / 2);
+                Canvas.SetTop(rectangle1, popup.Y - rectangle1.ActualHeight / 2);
+                Canvas.SetLeft(ellipseLaserPoint, popup.X - ellipseLaserPoint.ActualWidth / 2);
+                Canvas.SetTop(ellipseLaserPoint, popup.Y - ellipseLaserPoint.ActualHeight / 2);
             }
 
             if (bShowFrame)
@@ -885,9 +929,8 @@ namespace WPFDemoServer
         {
             if (bGlobalSettingMouseControl)
             {
-                ellipse1.Margin = new Thickness(realMouseRelativePos.X - ellipse1.Width / 2,
-                                                realMouseRelativePos.Y - ellipse1.Height / 2,
-                                                0, 0);
+                Canvas.SetLeft(ellipse1, realMouseRelativePos.X - ellipse1.ActualWidth / 2);
+                Canvas.SetTop(ellipse1, realMouseRelativePos.Y - ellipse1.ActualHeight / 2);
             }
             else{
                 int lowPassFilterLength = 1;
@@ -911,9 +954,8 @@ namespace WPFDemoServer
                     //    popup.Y /= lowPassFilterLength;
                     //}
 
-                    ellipse1.Margin = new Thickness(ellipse1.Margin.Left + (popup.X * mouseScale),
-                                                    ellipse1.Margin.Top + (popup.Y * mouseScale),
-                                                    0, 0);
+                    Canvas.SetLeft(ellipse1, Canvas.GetLeft(ellipse1) + (popup.X * mouseScale));
+                    Canvas.SetTop(ellipse1, Canvas.GetTop(ellipse1) + (popup.Y * mouseScale));
                     mouseCurrentOffsetLength = ((Vector)popup).Length;
                     //cursorPosQueue.Dequeue();
                 }
@@ -932,10 +974,10 @@ namespace WPFDemoServer
                 if(bLmb)
                 {
                     ellipse1.Fill = new SolidColorBrush(Color.FromArgb(0xFF, 0x3C, 0x57, 0x7F));
-                    if(ellipse1.Margin.Left + ellipse1.Width / 2 > ellipseTarget.Margin.Left
-                        && ellipse1.Margin.Left + ellipse1.Width / 2 < ellipseTarget.Margin.Left + ellipseTarget.Width
-                        && ellipse1.Margin.Top + ellipse1.Height / 2 > ellipseTarget.Margin.Top
-                        && ellipse1.Margin.Top + ellipse1.Height / 2 < ellipseTarget.Margin.Top + ellipseTarget.Height)
+                    if(Canvas.GetLeft(ellipse1) + ellipse1.ActualWidth / 2 > Canvas.GetLeft(ellipseTarget)
+                        && Canvas.GetLeft(ellipse1) + ellipse1.ActualWidth / 2 < Canvas.GetLeft(ellipseTarget) + ellipseTarget.ActualWidth
+                        && Canvas.GetTop(ellipse1) + ellipse1.ActualHeight / 2 > Canvas.GetTop(ellipseTarget)
+                        && Canvas.GetTop(ellipse1) + ellipse1.ActualHeight / 2 < Canvas.GetTop(ellipseTarget) + ellipseTarget.ActualHeight)
                     {
                         gotTarget();
                         System.Media.SystemSounds.Asterisk.Play();
@@ -958,10 +1000,11 @@ namespace WPFDemoServer
         /// </summary>
         private void performDwellClick() 
         {
-            if (ellipse1.Margin.Left + ellipse1.Width / 2 > ellipseTarget.Margin.Left
-                        && ellipse1.Margin.Left + ellipse1.Width / 2 < ellipseTarget.Margin.Left + ellipseTarget.Width
-                        && ellipse1.Margin.Top + ellipse1.Height / 2 > ellipseTarget.Margin.Top
-                        && ellipse1.Margin.Top + ellipse1.Height / 2 < ellipseTarget.Margin.Top + ellipseTarget.Height)
+            if (
+                Canvas.GetLeft(ellipse1) + ellipse1.ActualWidth / 2 > Canvas.GetLeft(ellipseTarget) &&
+                Canvas.GetLeft(ellipse1) + ellipse1.ActualWidth / 2 < Canvas.GetLeft(ellipseTarget) + ellipseTarget.ActualWidth &&
+                Canvas.GetTop(ellipse1) + ellipse1.ActualHeight / 2 > Canvas.GetTop(ellipseTarget) &&
+                Canvas.GetTop(ellipse1) + ellipse1.ActualHeight / 2 < Canvas.GetTop(ellipseTarget) + ellipseTarget.ActualHeight)
             {
                 if (bFirstEnter) 
                 {
@@ -1049,24 +1092,24 @@ namespace WPFDemoServer
         private Boolean cursorInFrame(ref System.Windows.Point point)
         {
             Boolean bMovedToFrame = false;
-            if (point.X < rectangle1.Margin.Left)
+            if (point.X < Canvas.GetLeft(rectangle1))
             {
-                point.X = rectangle1.Margin.Left;
+                point.X = Canvas.GetLeft(rectangle1);
                 bMovedToFrame = true;
             }
-            if (point.Y < rectangle1.Margin.Top)
+            if (point.Y < Canvas.GetTop(rectangle1))
             {
-                point.Y = rectangle1.Margin.Top;
+                point.Y = Canvas.GetTop(rectangle1);
                 bMovedToFrame = true;
             }
-            if (point.X > rectangle1.Margin.Left + rectangle1.Width)
+            if (point.X > Canvas.GetLeft(rectangle1) + rectangle1.ActualWidth)
             {
-                point.X = rectangle1.Margin.Left + rectangle1.Width;
+                point.X = Canvas.GetLeft(rectangle1) + rectangle1.ActualWidth;
                 bMovedToFrame = true;
             }
-            if (point.Y > rectangle1.Margin.Top + rectangle1.Height)
+            if (point.Y > Canvas.GetTop(rectangle1) + rectangle1.ActualHeight)
             {
-                point.Y = rectangle1.Margin.Top + rectangle1.Height;
+                point.Y = Canvas.GetTop(rectangle1) + rectangle1.ActualHeight;
                 bMovedToFrame = true;
             }
 
@@ -1078,7 +1121,8 @@ namespace WPFDemoServer
         {
             for(int i = 0; i < highLight.Length; i++)
             {
-                highLight[i].Margin = new Thickness(x - highLight[i].Width / 2, y - highLight[i].Height / 2, 0, 0);
+                Canvas.SetLeft(highLight[i], x - highLight[i].ActualWidth / 2);
+                Canvas.SetTop(highLight[1], y - highLight[i].ActualHeight / 2);
             }
 
             var storyboard = new Storyboard();
@@ -1110,10 +1154,36 @@ namespace WPFDemoServer
             }
         }
 
+        private void setTaskOrder(ref int[] vancant_order_list, int task_cnt, int repeat_cnt)
+        {
+            for (int i=0; i< task_cnt; ++i)
+            {
+                for (int j=0; j< repeat_cnt; ++j)
+                {
+                    vancant_order_list[repeat_cnt * i + j]= i;
+                }
+            }
+
+            Random rng = new Random();
+            int total_cnt = task_cnt * repeat_cnt;
+            while (total_cnt > 1)
+            {
+                total_cnt--;
+                int k = rng.Next(total_cnt + 1);
+                int temp = vancant_order_list[k];
+                vancant_order_list[k] = vancant_order_list[total_cnt];
+                vancant_order_list[total_cnt] = temp;
+            }
+        }
+
         //----------setting tests--------------------------------------------------------------------------------------
 
         public void startTest()
         {
+            task_count = aGridDots.Count * cTaskRepeatCnt;
+            gTaskOrder = new int[task_count];
+            setTaskOrder(ref gTaskOrder, aGridDots.Count, cTaskRepeatCnt);
+
             movementTimer.Start();
             
             setTarget();
@@ -1128,14 +1198,15 @@ namespace WPFDemoServer
             double w = canvas1.ActualWidth;
 
             // grid positions
-            int gridIdx = cGridRow * cGridColumn - task_count;
-            targetPos.X = aGridDots[gridIdx].Margin.Left + (cGridDiameter / 2);
-            targetPos.Y = aGridDots[gridIdx].Margin.Top + (cGridDiameter / 2);
+            int orderIdx = gTaskOrder.Count() - task_count ;
+            targetPos.X = Canvas.GetLeft(aGridDots[gTaskOrder[orderIdx]].dot) + (cGridDiameter / 2);
+            targetPos.Y = Canvas.GetTop(aGridDots[gTaskOrder[orderIdx]].dot) + (cGridDiameter / 2);
 
             stopwatch.Stop();
             stopwatch.Reset();
             ellipseTarget.Visibility = Visibility.Visible;
-            ellipseTarget.Margin = new Thickness(targetPos.X - ellipseTarget.Width / 2, targetPos.Y - ellipseTarget.Height / 2, 0, 0);
+            Canvas.SetLeft(ellipseTarget, targetPos.X - ellipseTarget.ActualWidth / 2);
+            Canvas.SetTop(ellipseTarget, targetPos.Y - ellipseTarget.ActualHeight / 2);
             targetBlink(targetPos.X, targetPos.Y);
             stopwatch.Start();
         }
@@ -1148,8 +1219,8 @@ namespace WPFDemoServer
             ellipseTarget.Visibility = Visibility.Hidden;
 
             Point currentGazeAvgPosRelevant2Target = new Point(
-                 (ellipseTarget.Margin.Left + ellipseTarget.ActualWidth / 2) - currentGazeAvgPos.X,
-                 (ellipseTarget.Margin.Top + ellipseTarget.ActualHeight / 2) - currentGazeAvgPos.Y
+                 (Canvas.GetLeft(ellipseTarget) + ellipseTarget.ActualWidth / 2) - currentGazeAvgPos.X,
+                 (Canvas.GetTop(ellipseTarget) + ellipseTarget.ActualHeight / 2) - currentGazeAvgPos.Y
             );
 
             task_count--;

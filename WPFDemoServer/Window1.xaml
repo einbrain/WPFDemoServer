@@ -14,12 +14,13 @@
         <TextBox Text="20"  Height="21" Margin="69,63,0,0" Name="repeatBox" VerticalAlignment="Top" HorizontalAlignment="Left" Width="56" />
         <Label Content="Repeat" Height="28" HorizontalAlignment="Left" Margin="13,61,0,0" Name="label4" VerticalAlignment="Top" />
         <Label Content="time(s)" Height="28" HorizontalAlignment="Left" Margin="131,61,0,0" Name="label5" VerticalAlignment="Top" />
-        <TextBlock Margin="331,19,0,12" Name="textBlock1" Text="TextBlock" />
+        <TextBlock Margin="308,19,10,203" Name="textBlock1" Text="TextBlock" />
         <Slider Height="23" HorizontalAlignment="Left" Margin="13,216,0,0" Maximum="2" Minimum="1" Name="slider3" TickPlacement="BottomRight" Value="1.5" VerticalAlignment="Top" Width="290" LargeChange="0.1" SmallChange="0.01" TickFrequency="0.1" IsSnapToTickEnabled="True" ValueChanged="slider3_ValueChanged" />
         <Label Content="Shrinking index" Height="28" HorizontalAlignment="Left" Margin="112,245,0,0" Name="label6" VerticalAlignment="Top" />
         <CheckBox Content="Shrink" Height="16" HorizontalAlignment="Left" Margin="75,272,0,0" Name="checkBox1" VerticalAlignment="Top" IsChecked="True" Checked="checkBox1_Checked" Unchecked="checkBox1_Unchecked" />
-        <CheckBox Content="Mouse Controlling" Height="16" HorizontalAlignment="Left" IsChecked="False" Margin="137,272,0,0" Name="checkBox2" VerticalAlignment="Top" Checked="checkBox2_Checked" Unchecked="checkBox2_Unchecked" />
-        <CheckBox Content="Line" Height="16" HorizontalAlignment="Right" IsChecked="False" Margin="0,272,226,0" Name="checkBox3" VerticalAlignment="Top" Checked="checkBox3_Checked" Unchecked="checkBox3_Unchecked" />
+        <CheckBox Content="Mouse Control&#xD;&#xA;" Height="16" HorizontalAlignment="Left" IsChecked="False" Margin="137,272,0,0" Name="checkBox2" VerticalAlignment="Top" Checked="checkBox2_Checked" Unchecked="checkBox2_Unchecked" />
+        <CheckBox Content="Line" Height="16" HorizontalAlignment="Right" IsChecked="False" Margin="0,272,249,0" Name="checkBox3" VerticalAlignment="Top" Checked="checkBox3_Checked" Unchecked="checkBox3_Unchecked" />
         <CheckBox Content="Frame" Height="16" HorizontalAlignment="Left" Margin="13,272,0,0" x:Name="checkBox4" VerticalAlignment="Top" IsChecked="True" Checked="checkBox4_Checked" Unchecked="checkBox4_Unchecked" />
+        <Canvas x:Name="ResCanvas" HorizontalAlignment="Left" Height="188" Margin="308,181,0,0" VerticalAlignment="Top" Width="221"/>
     </Grid>
 </Window>
