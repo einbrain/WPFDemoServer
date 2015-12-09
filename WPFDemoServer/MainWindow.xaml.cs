@@ -1122,7 +1122,7 @@ namespace WPFDemoServer
             for(int i = 0; i < highLight.Length; i++)
             {
                 Canvas.SetLeft(highLight[i], x - highLight[i].ActualWidth / 2);
-                Canvas.SetTop(highLight[1], y - highLight[i].ActualHeight / 2);
+                Canvas.SetTop(highLight[i], y - highLight[i].ActualHeight / 2);
             }
 
             var storyboard = new Storyboard();
