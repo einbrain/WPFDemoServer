@@ -1228,7 +1228,12 @@ namespace WPFDemoServer
             {
                 if (fileWriter != null)
                 {
-                    fileWriter.WriteLine("{0},{1}", currentGazeAvgPosRelevant2Target.X, currentGazeAvgPosRelevant2Target.Y);
+                    fileWriter.WriteLine("{0},{1},{2},{3}",
+                        currentGazeAvgPosRelevant2Target.X,
+                        currentGazeAvgPosRelevant2Target.Y,
+                        Canvas.GetLeft(ellipseTarget) + ellipseTarget.ActualWidth / 2,
+                        Canvas.GetTop(ellipseTarget) + ellipseTarget.ActualHeight / 2
+                    );
                 }
 
                 if (task_count <= 0)
