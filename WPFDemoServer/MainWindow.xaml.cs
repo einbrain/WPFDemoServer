@@ -53,7 +53,8 @@ namespace WPFDemoServer
         private const int cGridMarginX = 20;
         private const int cGirdMarginY = 20; 
         private const double cGridDiameter = 20;
-        private const Int16 cGazeDwellingThreshMS = 2000;
+        private const Int16 cGazeDwellingThreshMS = 1000;
+        private const Int16 cGazeHomeDwellingThreshMS = 1000;
         private const double cHomingAreaWidth = 150;
         private const double cHomingAreaHeight = 150;
         private const int cTaskRepeatCnt = 2;
@@ -78,7 +79,7 @@ namespace WPFDemoServer
         private ConcurrentQueue<Point> boxPosQueue;
         private ConcurrentQueue<Point> boxPosOffsetQueue;
         private ConcurrentQueue<Point> cursorPosQueue;
-        private ConcurrentQueue<bool> lmbQueue;
+        private ConcurrentQueue<Byte> lmbQueue;
         private ConcurrentQueue<String> cmdQueue;
         private ConcurrentQueue<Double> frameDistQueue;
         private ConcurrentQueue<Point> qGazePosQueue;
@@ -111,6 +112,7 @@ namespace WPFDemoServer
         private bool bGazeDwelling;
         private Double dGazeActivity;
         private bool bGazeHoming;
+        private int nTargetHandState;
 
         //--misc components---------------------
         //---time---------------
@@ -119,7 +121,8 @@ namespace WPFDemoServer
         private System.Diagnostics.Stopwatch moveIntervalStopwatch;
         private System.Diagnostics.Stopwatch fpsStopwatch;
         private System.Diagnostics.Stopwatch frameAppearStopwatch;      // frame remain visible for a while after dead control signal
-        private System.Diagnostics.Stopwatch gazeDwellStopwatch;
+        private System.Diagnostics.Stopwatch gazingStopwatch;
+        private System.Diagnostics.Stopwatch gazeHomeDwellStopwatch;
 
         private DispatcherTimer timer;
         private Int16 nTickCount;
@@ -132,7 +135,7 @@ namespace WPFDemoServer
         //---graphic------------
         private Ellipse[] highLight;
         private Ellipse[] aDwellDots;
-        private Rectangle homingArea;
+        private Ellipse homingArea;
         //---GridDots-----------
         public struct GridPos
         {
@@ -211,6 +214,7 @@ namespace WPFDemoServer
             bGazeDwelling = true;
             dGazeActivity = 0.0f;
             bGazeHoming = false;
+            nTargetHandState = 0;
 
             bFirstEnter = true;
             //bFirstTarget = true;
@@ -223,7 +227,7 @@ namespace WPFDemoServer
             boxPosQueue = new ConcurrentQueue<Point>();
             boxPosOffsetQueue = new ConcurrentQueue<Point>();
             cursorPosQueue = new ConcurrentQueue<Point>();
-            lmbQueue = new ConcurrentQueue<Boolean>();
+            lmbQueue = new ConcurrentQueue<Byte>();
             cmdQueue = new ConcurrentQueue<String>();
             frameDistQueue = new ConcurrentQueue<Double>();
             qGazePosQueue = new ConcurrentQueue<Point>();
@@ -235,7 +239,8 @@ namespace WPFDemoServer
             moveIntervalStopwatch = new System.Diagnostics.Stopwatch();
             fpsStopwatch = new System.Diagnostics.Stopwatch();
             frameAppearStopwatch = new System.Diagnostics.Stopwatch();
-            gazeDwellStopwatch = new System.Diagnostics.Stopwatch();
+            gazingStopwatch = new System.Diagnostics.Stopwatch();
+            gazeHomeDwellStopwatch = new System.Diagnostics.Stopwatch();
 
             timer = new DispatcherTimer(DispatcherPriority.Background);
             timer.Interval = TimeSpan.FromTicks(10);
@@ -289,19 +294,19 @@ namespace WPFDemoServer
             {
                 for(int j = 0; j < cGridColumn; ++j)
                 {
-                    if (Array.IndexOf(gridMask, new GridPos(i, j)) == -1)
+                    if (Array.IndexOf(gridMask, new GridPos(i, j)) == -1)  //the dot is not masked out
                     {
                         Ellipse newDot = new Ellipse();
                         newDot = new Ellipse();
                         newDot.Fill = gridBrush;
                         newDot.Width = cGridDiameter;
                         newDot.Height = cGridDiameter;
-                        //newGridDot.Visibility = Visibility.Hidden;
+                        newDot.Visibility = Visibility.Hidden;
 
                         canvas1.Children.Add(newDot);
                         Canvas.SetLeft(newDot, (canvas1.ActualWidth - cGridMarginX * 2) / (cGridColumn - 1) * j + cGridMarginX - (cGridDiameter / 2));
                         Canvas.SetTop(newDot, (canvas1.ActualHeight - cGirdMarginY * 2) / (cGridRow - 1) * i + cGirdMarginY - (cGridDiameter / 2));
-                        Canvas.SetZIndex(newDot, -1);
+                        Canvas.SetZIndex(newDot, -3);
 
                         // memorize the dot object and its proportional position
                         aGridDots.Add(
@@ -315,17 +320,18 @@ namespace WPFDemoServer
                 }
             }
 
-            homingArea = new Rectangle();
+            homingArea = new Ellipse();
             homingArea.Width = cHomingAreaWidth;
             homingArea.Height = cHomingAreaHeight;
-            homingArea.Margin = new Thickness(
-                windowWidth / 2 - cHomingAreaWidth / 2,
-                windowHeight / 2 - cHomingAreaHeight / 2,
-                0,0
-            );
+            Canvas.SetLeft(homingArea, windowWidth / 2 - cHomingAreaWidth / 2);
+            Canvas.SetTop(homingArea, windowHeight / 2 - cHomingAreaHeight / 2);
             homingArea.Fill = new SolidColorBrush(Color.FromArgb(0x80, 0x16, 0xc1, 0xfa));
             canvas1.Children.Add(homingArea);
             Canvas.SetZIndex(homingArea, -2);
+
+            rock_png.Visibility = Visibility.Hidden;
+            scissors_png.Visibility = Visibility.Hidden;
+            paper_png.Visibility = Visibility.Hidden;
 
             dlgWindow = new Window1();
             dlgWindow.Owner = this;
@@ -380,10 +386,11 @@ namespace WPFDemoServer
                     if(bGazeDwelling)
                     {
                         bGazeDwelling = false;
+                        gazingStopwatch.Stop();
+                        gazingStopwatch.Reset();
+
                         ellipseLaserPoint.Fill = new SolidColorBrush(Color.FromArgb(0xff, 0xfa, 0xf3, 0x1e));
                         rectangle1.Fill = new SolidColorBrush(Color.FromArgb(0x48, 0x8a, 0xef, 0xb8));
-                        gazeDwellStopwatch.Stop();
-                        gazeDwellStopwatch.Reset();
                     }
                 }
                 else
@@ -391,13 +398,10 @@ namespace WPFDemoServer
                     if(!bGazeDwelling)
                     {
                         bGazeDwelling = true;
+                        gazingStopwatch.Start();
 
                         ellipseLaserPoint.Fill = new SolidColorBrush(Color.FromArgb(0xff, 0x58, 0x1b, 0xa2));
                         rectangle1.Fill = new SolidColorBrush(Color.FromArgb(0x48, 0x1e, 0xad, 0xfa));
-                        if(!bGazeHoming)
-                        {
-                            gazeDwellStopwatch.Start();
-                        }
                     }
                 }
             }//if (qGazePosQueue.Count > cGazePosQueueLength)
@@ -457,12 +461,8 @@ namespace WPFDemoServer
 
             if (homingArea != null)
             {
-                homingArea.Margin = new Thickness(
-                    windowWidth / 2 - cHomingAreaWidth / 2,
-                    windowHeight / 2 - cHomingAreaHeight / 2,
-                    windowWidth / 2 + cHomingAreaWidth / 2,
-                    windowHeight / 2 + cHomingAreaHeight / 2
-                );
+                Canvas.SetLeft(homingArea, windowWidth / 2 - cHomingAreaWidth / 2);
+                Canvas.SetTop(homingArea, windowHeight / 2 - cHomingAreaHeight / 2);
             }
         }
 
@@ -633,6 +633,7 @@ namespace WPFDemoServer
                 }
             }
 
+
             // ====== less frequently refreshed contents ==========
             ++nTickCount;
 
@@ -658,6 +659,27 @@ namespace WPFDemoServer
                 else
                 {
                     label4.Content = "Test stopped.";
+                }
+                
+                if (bGazeHoming)
+                    // change homing area color
+                {
+                    Point homingCenter = new Point(
+                        Canvas.GetLeft(homingArea) + cHomingAreaWidth / 2,
+                        Canvas.GetTop(homingArea) + cHomingAreaHeight / 2
+                        );
+
+                    if (
+                        Point.Subtract(currentGazeAvgPos, homingCenter).Length < cHomingAreaWidth / 2
+                        && bGazeDwelling
+                        )
+                    {
+                        homingArea.Fill = new SolidColorBrush(Color.FromArgb(0x80, 0xf4, 0xff, 0x21));
+                    }
+                    else
+                    {
+                        homingArea.Fill = new SolidColorBrush(Color.FromArgb(0x80, 0x16, 0xc1, 0xfa));
+                    }
                 }
             }
 
@@ -757,12 +779,12 @@ namespace WPFDemoServer
                             }
                             break;
                         case 0x2:
-                            Boolean bLMB = Convert.ToBoolean(recvBytes[1]);
-                            changeLMB(bLMB);
-                            Console.WriteLine("LMB: " + Convert.ToString(bLMB));
+                            Byte cLMB = Convert.ToByte(recvBytes[1]);
+                            changeLMB(cLMB);
+                            Console.WriteLine("LMB: " + Convert.ToString(cLMB));
                             string trashString3 = "";
                             while(cmdQueue.Count > cmdQueueLength) cmdQueue.TryDequeue(out trashString3);
-                            cmdQueue.Enqueue("LMB: " + Convert.ToString(bLMB) + "\n");
+                            cmdQueue.Enqueue("LMB: " + Convert.ToString(cLMB) + "\n");
                             break;
                         default:
                             break;
@@ -853,7 +875,7 @@ namespace WPFDemoServer
             }
         }
 
-        private void changeLMB(Boolean lmbFlag){
+        private void changeLMB(Byte lmbFlag){
             lmbQueue.Enqueue(lmbFlag);
         }
 
@@ -969,9 +991,9 @@ namespace WPFDemoServer
         {
             while (lmbQueue.Count > 0)
             {
-                bool bLmb;
+                Byte bLmb;
                 while (!lmbQueue.TryDequeue(out bLmb)) ;
-                if(bLmb)
+                if(bLmb != 0)
                 {
                     ellipse1.Fill = new SolidColorBrush(Color.FromArgb(0xFF, 0x3C, 0x57, 0x7F));
                     if(Canvas.GetLeft(ellipse1) + ellipse1.ActualWidth / 2 > Canvas.GetLeft(ellipseTarget)
@@ -1039,27 +1061,87 @@ namespace WPFDemoServer
 
         private void performGaze()
         {
-            if(bGazeDwelling && !bGazeHoming)
+            if(!bGazeHoming)
             {
-                if(gazeDwellStopwatch.ElapsedMilliseconds >= cGazeDwellingThreshMS)
+                if (gazingStopwatch.ElapsedMilliseconds >= cGazeDwellingThreshMS)
                 {
-                    gotTarget();
-                    bGazeHoming = true;
-                    gazeDwellStopwatch.Stop();
-                    gazeDwellStopwatch.Reset();
+                    Byte lmbOut = 99;
+                    while (lmbQueue.Count > 0) lmbQueue.TryDequeue(out lmbOut) ;
+
+                    bool winner = false;
+                    switch(nTargetHandState)
+                    {
+                        case 0: //open - paper
+                            if(lmbOut == 2)
+                            {
+                                winner = true;
+                            }
+                            break;
+                        case 1: //close - rock
+                            if(lmbOut == 0)
+                            {
+                                winner = true;
+                            }
+                            break;
+                        case 2: //lasso - scissors
+                            if(lmbOut == 1)
+                            {
+                                winner = true;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+
+                    if(winner)
+                    {
+                        bGazeHoming = true;
+                        gotTarget();
+                    }
                 }
-            }
-            if(bGazeHoming)
+            }//if Homing == false
+            else
             {
-                if(currentGazeAvgPos.X < homingArea.Margin.Left + cHomingAreaWidth
-                    && currentGazeAvgPos.X > homingArea.Margin.Left
-                    && currentGazeAvgPos.Y < homingArea.Margin.Top + cHomingAreaHeight
-                    && currentGazeAvgPos.Y > homingArea.Margin.Top)
+                homingArea.Visibility = Visibility.Visible;
+
+                Point homingCenter = new Point(
+                    Canvas.GetLeft(homingArea) + cHomingAreaWidth / 2, 
+                    Canvas.GetTop(homingArea) + cHomingAreaHeight / 2
+                    );
+
+                if (Point.Subtract(currentGazeAvgPos, homingCenter).Length < cHomingAreaWidth / 2)
+                    //if inside homing area
                 {
-                    bGazeHoming = false;
-                    gazeHomed();
+                    if(bGazeDwelling)
+                    {
+                        if (!gazeHomeDwellStopwatch.IsRunning)
+                        {
+                            gazeHomeDwellStopwatch.Start();
+                        }
+                        else
+                        {
+                            if (gazeHomeDwellStopwatch.ElapsedMilliseconds >= cGazeHomeDwellingThreshMS)
+                            {
+                                bGazeHoming = false;
+                                gazeHomeDwellStopwatch.Stop();
+                                gazeHomeDwellStopwatch.Reset();
+                                gazingStopwatch.Reset();
+
+                                homingArea.Visibility = Visibility.Hidden;
+                                setTarget();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if(gazeHomeDwellStopwatch.IsRunning)
+                        {
+                            gazeHomeDwellStopwatch.Stop();
+                            gazeHomeDwellStopwatch.Reset();
+                        }
+                    }
                 }
-            }
+            }//if Homing == true
         }
 
         private Boolean normalizePos(ref System.Windows.Point point)
@@ -1184,9 +1266,14 @@ namespace WPFDemoServer
             gTaskOrder = new int[task_count];
             setTaskOrder(ref gTaskOrder, aGridDots.Count, cTaskRepeatCnt);
 
+            paper_png.Visibility = Visibility.Hidden;
+            rock_png.Visibility = Visibility.Hidden;
+            scissors_png.Visibility = Visibility.Hidden;
+
             movementTimer.Start();
             
             setTarget();
+            homingArea.Visibility = Visibility.Hidden;
 
             bTestStarted = true;
         }
@@ -1204,9 +1291,34 @@ namespace WPFDemoServer
 
             stopwatch.Stop();
             stopwatch.Reset();
+
             ellipseTarget.Visibility = Visibility.Visible;
             Canvas.SetLeft(ellipseTarget, targetPos.X - ellipseTarget.ActualWidth / 2);
             Canvas.SetTop(ellipseTarget, targetPos.Y - ellipseTarget.ActualHeight / 2);
+
+            Random rng = new Random();
+            nTargetHandState = rng.Next(3);
+            switch(nTargetHandState) //set rock-scissors-paper images
+            {
+                case 0: //open - paper
+                    paper_png.Visibility = Visibility.Visible;
+                    Canvas.SetLeft(paper_png, targetPos.X - paper_png.ActualWidth / 2);
+                    Canvas.SetTop(paper_png, targetPos.Y - paper_png.ActualHeight / 2);
+                    break;
+                case 1: //close - rock
+                    rock_png.Visibility = Visibility.Visible;
+                    Canvas.SetLeft(rock_png, targetPos.X - rock_png.ActualWidth / 2);
+                    Canvas.SetTop(rock_png, targetPos.Y - rock_png.ActualHeight / 2);
+                    break;
+                case 2: //lasso - scissors
+                    scissors_png.Visibility = Visibility.Visible;
+                    Canvas.SetLeft(scissors_png, targetPos.X - scissors_png.ActualWidth / 2);
+                    Canvas.SetTop(scissors_png, targetPos.Y - scissors_png.ActualHeight / 2);
+                    break;
+                default:
+                    break;
+            }
+
             targetBlink(targetPos.X, targetPos.Y);
             stopwatch.Start();
         }
@@ -1217,6 +1329,9 @@ namespace WPFDemoServer
             long millisec = stopwatch.ElapsedMilliseconds;
             stopwatch.Reset();
             ellipseTarget.Visibility = Visibility.Hidden;
+            paper_png.Visibility = Visibility.Hidden;
+            rock_png.Visibility = Visibility.Hidden;
+            scissors_png.Visibility = Visibility.Hidden;
 
             Point currentGazeAvgPosRelevant2Target = new Point(
                  (Canvas.GetLeft(ellipseTarget) + ellipseTarget.ActualWidth / 2) - currentGazeAvgPos.X,
@@ -1263,14 +1378,6 @@ namespace WPFDemoServer
             
             miss_count = 0;
             move_count = 1;
-        }
-
-        private void gazeHomed()
-        {
-            if (bTestStarted)
-            {
-                setTarget();
-            }
         }
 
         /// <summary>

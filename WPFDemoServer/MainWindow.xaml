@@ -19,6 +19,9 @@
             <Ellipse Height="15" x:Name="ellipseLaserPoint" Stroke="#ffffffff" Width="15" Fill="#FF581BA2" Panel.ZIndex="1" Canvas.Top="0" />
             <Label x:Name="label5" Content="Gaze Status" Canvas.Right="6" Canvas.Top="38" FontSize="16" Foreground="#9ABBB7B7" Height="32" Panel.ZIndex="-1" Width="395" FlowDirection="RightToLeft" HorizontalAlignment="Left"/>
             <Label x:Name="label_resolution" Content="Resolution" Canvas.Right="6" Canvas.Top="70" Foreground="#9ABBB7B7" FontSize="16" RenderTransformOrigin="0.983,0.661" Width="274" FlowDirection="RightToLeft"/>
+            <Image x:Name="rock_png" Height="65" Canvas.Left="140" Source="rock.png" Stretch="Fill" Canvas.Top="166" Width="65"/>
+            <Image x:Name="scissors_png" Height="65" Canvas.Left="228" Source="scissors.png" Stretch="Fill" Canvas.Top="166" Width="55"/>
+            <Image x:Name="paper_png" Height="65" Canvas.Left="298" Source="paper.png" Stretch="Fill" Canvas.Top="166" Width="65" RenderTransformOrigin="0.864,0.38"/>
         </Canvas>
     </Grid>
 </Window>

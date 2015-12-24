@@ -1,7 +1,6 @@
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\bin\Debug\WPFDemoServer.exe.config
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\bin\Debug\WPFDemoServer.exe
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\bin\Debug\WPFDemoServer.pdb
-D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.csprojResolveAssemblyReference.cache
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\MainWindow.baml
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\Window1.baml
 D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\MainWindow.g.cs
