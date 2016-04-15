@@ -323,7 +323,9 @@ namespace WPFDemoServer
             homingArea = new Ellipse();
             homingArea.Width = cHomingAreaWidth;
             homingArea.Height = cHomingAreaHeight;
-            Canvas.SetLeft(homingArea, windowWidth / 2 - cHomingAreaWidth / 2);
+            Canvas.SetLeft(homingArea, windowWidth / 2 - cHomingAreaWidth / 2);   //Middle
+            //Canvas.SetLeft(homingArea, cGridMarginX - (cHomingAreaWidth / 2));    //Left
+            //Canvas.SetLeft(homingArea, canvas1.ActualWidth - cGridMarginX - (cHomingAreaWidth / 2));    //Right
             Canvas.SetTop(homingArea, windowHeight / 2 - cHomingAreaHeight / 2);
             homingArea.Fill = new SolidColorBrush(Color.FromArgb(0x80, 0x16, 0xc1, 0xfa));
             canvas1.Children.Add(homingArea);
@@ -461,7 +463,9 @@ namespace WPFDemoServer
 
             if (homingArea != null)
             {
-                Canvas.SetLeft(homingArea, windowWidth / 2 - cHomingAreaWidth / 2);
+                Canvas.SetLeft(homingArea, windowWidth / 2 - cHomingAreaWidth / 2);   //Middle
+                //Canvas.SetLeft(homingArea, cGridMarginX - (cHomingAreaWidth / 2));    //Left
+                //Canvas.SetLeft(homingArea, canvas1.ActualWidth - cGridMarginX - (cHomingAreaWidth / 2));    //Right
                 Canvas.SetTop(homingArea, windowHeight / 2 - cHomingAreaHeight / 2);
             }
         }

@@ -27,3 +27,4 @@ D:\Profiles\Documents\GitHub\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoSe
 D:\Profiles\Documents\GitHub\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.g.resources
 D:\Profiles\Documents\GitHub\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.Properties.Resources.resources
 D:\Profiles\Documents\GitHub\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.csproj.GenerateResource.Cache
+D:\Dev\[Src]\WPFDemoServer\WPFDemoServer\obj\x86\Debug\WPFDemoServer.csprojResolveAssemblyReference.cache
