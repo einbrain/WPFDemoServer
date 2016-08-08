@@ -381,7 +381,7 @@ namespace WPFDemoServer
             frameCurrentPos = new System.Windows.Point(rectangle1.Margin.Left + rectangle1.Width / 2, rectangle1.Margin.Top + rectangle1.Height / 2);
 
             //
-            // Move the cursor(shape)
+            // Move the cursor
             if (normalizePos(ref mouseCurrentPos)) //Normalize cursor position so that it is inside the bound of main window
             {
                 ellipse1.Margin = new Thickness(mouseCurrentPos.X - ellipse1.Width / 2, mouseCurrentPos.Y - ellipse1.Height / 2, 0, 0);
